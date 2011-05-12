@@ -81,14 +81,30 @@ public class IospUtils {
         }
         return props;
     }
+    
+    /**
+     * Defers to {@link parseProperties(File propertiesFile) } using <code>new File(System.getProperty("user.home") + "/ooici-conn.properties")</code> as the <code>propertiesFile</code>
+     * @return the map of properties
+     * @throws IOException
+     */
+    public static HashMap<String, String> parseProperties() throws IOException {
+        /* Look for connection properties in the user.home directory */
+        java.io.File connFile = new java.io.File(System.getProperty("user.home") + "/ooici-conn.properties");
+
+        HashMap<String, String> props = null;
+        if (connFile.exists()) {
+            props = parseProperties(connFile);
+        }
+        return props;
+    }
 
     public static Cdmdatatype.DataType getOoiDataType(DataType ucarDT) {
         Cdmdatatype.DataType ret = null;
 
         switch (ucarDT) {
-            case BOOLEAN:
-                ret = Cdmdatatype.DataType.BOOLEAN;
-                break;
+//            case BOOLEAN:
+//                ret = Cdmdatatype.DataType.BOOLEAN;
+//                break;
             case BYTE:
                 ret = Cdmdatatype.DataType.BYTE;
                 break;
@@ -137,9 +153,9 @@ public class IospUtils {
         DataType ret = null;
 
         switch (ooiDT) {
-            case BOOLEAN:
-                ret = DataType.BOOLEAN;
-                break;
+//            case BOOLEAN:
+//                ret = DataType.BOOLEAN;
+//                break;
             case BYTE:
                 ret = DataType.BYTE;
                 break;

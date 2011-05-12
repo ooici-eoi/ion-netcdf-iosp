@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- =======================================================================
+        Maven Project Configuration File
+     ======================================================================= -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>edu.ucar</groupId>
+    <artifactId>netcdf-parent</artifactId>
+    <version>4.2.22</version>
+  </parent>
+
+
+  <!-- ===========================================================
+           Module Description
+       =========================================================== -->
+  <groupId>net.ooici</groupId>
+  <artifactId>ooici-iosp</artifactId>
+  <packaging>jar</packaging>
+  <version>${ooici.version}</version>
+  <name>OOI-CI Iosp</name>
+  <description>
+      The OOI-CI Iosp provides an iosp for retrieving scientific data via direct communication with ION.
+  </description>
+<!--  <url>http://www.unidata.ucar.edu/software/netcdf-java/</url>-->
+
+<!--  <scm>
+    <url>http://svn.unidata.ucar.edu/repos/thredds/trunk/cdm</url>
+    <connection>http://svn.unidata.ucar.edu/repos/thredds/trunk/cdm</connection>
+    <developerConnection>scm:svn:http://svn.unidata.ucar.edu/repos/thredds/trunk/netcdf</developerConnection>
+  </scm>-->
+
+
+  <!-- ===========================================================
+           Developers and Contributors
+       =========================================================== -->
+  <developers>
+    <developer>
+      <id>blazetopher</id>
+      <name>Christopher Mueller</name>
+      <email>cmueller@asascience.com</email>
+      <organization>ASA</organization>
+      <organizationUrl>http://www.asascience.com</organizationUrl>
+      <roles>
+        <role>EOI Subsystem Lead</role>
+        <role>Java Developer</role>
+      </roles>
+    </developer>
+  </developers>
+
+
+  <!-- ===========================================================
+           Dependencies
+
+           Mandatory dependencies are listed first. Then everything
+           else is declared with the "provided" scope, meaning that
+           the user have to declare those dependencies himself in
+           his own pom.xml file if we want to read some formats.
+       =========================================================== -->
+  <dependencies>
+    <dependency>
+      <groupId>edu.ucar</groupId>
+      <artifactId>netcdf</artifactId>
+      <version>${netcdf.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>edu.ucar</groupId>
+      <artifactId>unidataCommon</artifactId>
+      <version>${common.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>net.ooici</groupId>
+        <artifactId>ioncore-java</artifactId>
+        <version>0.2.5-dev</version>
+    </dependency>
+
+    <!-- Extensions to the NetCDF core. The "bufrTables" extension
+         is not declared here in order to avoid cyclic dependency.
+         Extensions require additional dependencies (listed below),
+         but users should inherit them through the Maven transitive
+         dependencies mechanism. -->
+
+    
+  </dependencies>
+
+
+  <!-- ================================================================== -->
+  <!--     Repositories. This is where Maven looks for dependencies. The  -->
+  <!--     Maven repository is implicit and doesn't need to be specified. -->
+  <!-- ================================================================== -->
+  <repositories>
+     <!-- OOICI Repository - for ioncore-java and transitives -->
+     <repository>
+         <id>OOICI</id>
+         <name>OOICI Maven Repository</name>
+         <url>http://ooici.net/releases/maven/repo</url>
+     </repository>
+</repositories>
+
+  <!-- ===========================================================
+           Build configuration
+
+           We declare a non-existant test directory as a dirty trick
+           for skiping completly the tests, including compilation.
+       =========================================================== -->
+  <build>
+    <testSourceDirectory>void</testSourceDirectory>
+  </build>
+
+</project>
