@@ -6,10 +6,11 @@
     </configurations>
     <dependencies>
         <!-- ION project dependencies -->
-        <dependency name="ioncore-java" rev="0.2.6-dev" conf="*->*,!sources,!javadoc" />
+        <dependency name="ioncore-java" rev="0.2.6" conf="*->*,!sources,!javadoc" />
         <!-- JUnit -->
         <dependency org="junit" name="junit" rev="4.8.2" conf="*->*,!sources,!javadoc"/>
         <dependency name="netcdf" rev="4.2" conf="*->*,!sources,!javadoc" />
         <dependency name="unidataCommon" rev="4.2" conf="*->*,!sources,!javadoc" />
+        <dependency name="opendap" rev="2.2" conf="*->*,!sources,!javadoc" />
     </dependencies>
 </ivy-module>
