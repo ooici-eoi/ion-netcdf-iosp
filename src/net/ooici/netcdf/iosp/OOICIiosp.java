@@ -181,7 +181,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 
         /* Send the message to the datastore*/
         mainBroker.sendMessage(sendMessage);
-        IonMessage repMessage = mainBroker.consumeMessage(mainQueue);//default timeout is 30 seconds
+        IonMessage repMessage = mainBroker.consumeMessage(mainQueue, 30000);//set timeout to 30 seconds
 
         /* Parse the response into a StructureManager */
         if (repMessage != null) {
@@ -195,22 +195,30 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
     private void buildNetcdfDataset() throws IOException {
         /* Get Head IonMsg */
         GPBWrapper<IonMsg> ionMsgWrap = datasetManager.getObjectWrapper(datasetManager.getHeadId());
-//        log.debug("IonMsg:\n{}", ionMsgWrap.toString());
+        if(log.isDebugEnabled()) {
+            log.debug("IonMsg:\n{}", ionMsgWrap.toString());
+        }
         IonMsg ionMsg = ionMsgWrap.getObjectValue();
         if(ionMsg.getResponseCode() != ResponseCodes.OK) {
             throw new IOException("Error retrieving the requested resource: " + ionMsg.getResponseCode() + " ==> " + ionMsg.getResponseBody());
         }
 
         GPBWrapper<DataAccess.GetObjectReplyMessage> objRepWrap = datasetManager.getObjectWrapper(ionMsg.getMessageObject());
-//        log.debug("DataAccess.GetObjectReplyMessage:\n{}", objRepWrap.toString());
+        if(log.isDebugEnabled()) {
+            log.debug("DataAccess.GetObjectReplyMessage:\n{}", objRepWrap.toString());
+        }
         DataAccess.GetObjectReplyMessage objReply = objRepWrap.getObjectValue();
 
         GPBWrapper<ResourceFramework.OOIResource> resWrap = datasetManager.getObjectWrapper(objReply.getRetrievedObject());
-//        log.debug("ResourceFramework.OOIResource:\n{}", resWrap.toString());
+        if(log.isDebugEnabled()) {
+            log.debug("ResourceFramework.OOIResource:\n{}", resWrap.toString());
+        }
         ResourceFramework.OOIResource resource = resWrap.getObjectValue();
 
         GPBWrapper<Cdmdataset.Dataset> dsWrap = datasetManager.getObjectWrapper(resource.getResourceObject());
-//        log.debug("Cdmdataset.Dataset:\n{}", dsWrap.toString());
+        if(log.isDebugEnabled()) {
+            log.debug("Cdmdataset.Dataset:\n{}", dsWrap.toString());
+        }
         Cdmdataset.Dataset dataset = dsWrap.getObjectValue();
 
         GPBWrapper<Cdmgroup.Group> rootWrap = datasetManager.getObjectWrapper(dataset.getRootGroup());
@@ -218,13 +226,17 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         Dimension dim;
         for (Link.CASRef cref : rootGroup.getDimensionsList()) {
             dim = getNcDimension(cref);
-//            log.debug("Add Dim = {}", dim.getName());
+            if(log.isDebugEnabled()) {
+                log.debug("Add Dim = {}", dim.getName());
+            }
             ncfile.addDimension(null, dim);
         }
         Attribute att;
         for (Link.CASRef cref : rootGroup.getAttributesList()) {
             att = getNcAttribute(cref);
-//            log.debug("Add Att = {}", att.getName());
+            if(log.isDebugEnabled()) {
+                log.debug("Add Att = {}", att.getName());
+            }
             ncfile.addAttribute(null, att);
         }
         /* Initialize the varMap */
@@ -234,7 +246,9 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         for (Link.CASRef cref : rootGroup.getVariablesList()) {
             try {
                 v = getNcVariable(cref);
-//                log.debug("Add Var = {}", v.getName());
+                if(log.isDebugEnabled()) {
+                    log.debug("Add Var = {}", v.getName());
+                }
                 ncfile.addVariable(null, v);
             } catch (InvalidRangeException ex) {
                 throw new IOException("Error building variable, cannot continue", ex);
@@ -256,14 +270,18 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             dataBroker = new MsgBrokerClient(ooiciHost, AMQP.PROTOCOL.PORT, ooiciExchange);
             try {
                 dataBroker.attach();
-                log.debug("Data Broker Attached:: myBindingKey={}", dataName.toString());
+                if(log.isDebugEnabled()) {
+                    log.debug("Data Broker Attached:: myBindingKey={}", dataName.toString());
+                }
             } catch (IonException ex) {
                 throw new IOException("Error connecting to broker for data transfer", ex);
             }
             String dataQueue = dataBroker.declareQueue(null);
             dataBroker.bindQueue(dataQueue, dataName, null);
             dataBroker.attachConsumer(dataQueue);
-//            log.debug("DataBroker || binding_key={} : \"to\" name={} : queue_name = {}", new Object[]{dataName, ooiDatastoreName, dataQueue});
+            if(log.isDebugEnabled()) {
+                log.debug("DataBroker || binding_key={} : \"to\" name={} : queue_name = {}", new Object[]{dataName, ooiDatastoreName, dataQueue});
+            }
 
             /* Build the dataRequestMessage */
             net.ooici.core.workbench_messages.DataAccess.DataRequestMessage.Builder drmBldr = net.ooici.core.workbench_messages.DataAccess.DataRequestMessage.newBuilder();
@@ -290,7 +308,9 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             request.getIonHeaders().put("user-id", "ANONYMOUS");
             request.getIonHeaders().put("expiry", "0");
             request.getIonHeaders().put("performative", "request");
-//            log.debug(request.toString());
+            if(log.isDebugEnabled()) {
+                log.debug(request.toString());
+            }
             mainBroker.sendMessage(request);
 
             /* Initialize the ucar array and get the index */
@@ -321,7 +341,9 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 
                         /* Get the dataWrapper */
                         GPBWrapper dataWrap = dataManager.getObjectWrapper(dataChunk.getNdarray());
-//                        log.debug(dataWrap.toString());
+                        if(log.isDebugEnabled()) {
+                            log.debug(dataWrap.toString());
+                        }
                         /* Set the current counter on the index to the startIndex */
                         index.setCurrentCounter(si);
 
@@ -371,9 +393,11 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             throw new IOException("Error encountered while attempting to retrieve data", ex);
         } finally {
             if (dataBroker != null) {
-                log.debug("Data Broker Detached");
                 dataBroker.detach();
                 dataBroker = null;
+                if(log.isDebugEnabled()) {
+                    log.debug("Data Broker Detached");
+                }
             }
             IonMessage repMessage = mainBroker.consumeMessage(mainQueue, 10000);//10 second timeout
             if (repMessage != null) {
@@ -406,9 +430,11 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
          * Close the connection to OOI-CI, detach the broker
          */
         if (mainBroker != null) {
-            log.debug("Main Broker Detached");
             mainBroker.detach();
             mainBroker = null;
+            if(log.isDebugEnabled()) {
+                log.debug("Main Broker Detached");
+            }
         }
     }
 
@@ -464,7 +490,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         return new Dimension(ooiDim.getName(), (int) ooiDim.getLength());
     }
 
-    private Attribute getNcAttribute(Link.CASRef ref) {
+    private Attribute getNcAttribute(Link.CASRef ref) throws IOException {
         GPBWrapper<Cdmattribute.Attribute> attWrap = datasetManager.getObjectWrapper(ref);
         Cdmattribute.Attribute ooiAtt = attWrap.getObjectValue();
         Attribute ncAtt = null;
@@ -560,6 +586,9 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             /* TODO: Complete for other data types*/
         }
 
+        if(ncAtt == null) {
+            throw new IOException("Error reading OOICI attribute: attWrapper:" + attWrap.toString() + " arrWrapper: " + arrWrap.toString());
+        }
         return ncAtt;
     }
 
@@ -720,12 +749,15 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 //            sec.appendRange(5, 10, 2);
 //            sec.appendRange(0, 11, 5);
             
-            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04808";//CT_Station sample
-            var = "lat";
+//            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04808";//CT_Station sample
+//            var = "lat";
 //            sec.appendRange(0, 11, 5);
             
-//            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04802";//NTAS_1 sample
-//            var = "time";
+            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04802";//NTAS_1 sample
+            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04803";//NTAS_2 sample
+            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04804";//WHOTS_1 sample
+            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04805";//WHOTS_2 sample
+            var = "time";
             
 //            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E047F1";//Canned_station_profile sample
 //            var = "time";
@@ -737,7 +769,9 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 
 //            Array a = ncds.findVariable(var).read(sec);
             Array a = ncds.findVariable(var).read();
-            log.debug("{} Array: {}", var, a);
+            if(log.isDebugEnabled()) {
+                log.debug("{} Array: {}", var, a);
+            }
         } catch (IOException ex) {
             log.error("Error: ", ex);
         } finally {
