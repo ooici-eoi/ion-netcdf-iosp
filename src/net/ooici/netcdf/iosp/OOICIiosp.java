@@ -11,9 +11,11 @@ import ion.core.messaging.IonMessage;
 import ion.core.messaging.MessagingName;
 import ion.core.messaging.MsgBrokerClient;
 import ion.core.utils.GPBWrapper;
+import ion.core.utils.IonConstants;
 import ion.core.utils.IonUtils;
 import ion.core.utils.ProtoUtils;
 import ion.core.utils.StructureManager;
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.WritableByteChannel;
 import java.util.HashMap;
@@ -60,12 +62,9 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
     private static org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OOICIiosp.class);
     private NetcdfFile ncfile;
     private String datasetResourceId;
-    private static final String ooiciConnPropsName = "ooici-conn.properties";
-    private static final String userHome = System.getProperty("user.home") + "/";
     private static String ooiciHost = "";
     private static String ooiciExchange = "";
     private static String ooiciSysname = "";
-//    private static String ooiciService = "";
     private static String ooiciTopic = "";
     private MsgBrokerClient mainBroker = null;
     private MsgBrokerClient dataBroker = null;
@@ -79,18 +78,39 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
     public OOICIiosp() throws InstantiationException {
         if (!initialized) {
             try {
-                java.util.HashMap<String, String> connInfo = IonUtils.parseProperties();
-                if (connInfo != null && !connInfo.isEmpty()) {
-                    init(connInfo);
-                } else {
-                    throw new InstantiationException("Error parsing \"" + ooiciConnPropsName + "\" cannot continue.");
-                }
+                init();
             } catch (IOException ex) {
-                throw new InstantiationException("Error parsing \"" + ooiciConnPropsName + "\" cannot continue.");
+                throw new InstantiationException(new StringBuilder("Error: Missing OOICI connection information.  An \"").append(IonConstants.OOICI_CONN_FILENAME).append("\" file is required to use this functionality.  The file should be located in the current users home directory: \"").append(System.getProperty("user.home")).append("\"").toString());
             }
         }
     }
 
+    private static void _init() {
+        ooiciHost = System.getProperty(IonConstants.HOSTNAME_KEY, IonConstants.HOSTNAME_DEFAULT);
+        ooiciExchange = System.getProperty(IonConstants.EXCHANGE_KEY, IonConstants.EXCHANGE_DEFAULT);
+        ooiciSysname = System.getProperty(IonConstants.SYSNAME_KEY, IonConstants.SYSNAME_DEFAULT);
+        ooiciTopic = System.getProperty(IonConstants.DATASTORE_TOPIC_KEY, IonConstants.DATASTORE_TOPIC_DEFAULT);
+        log.debug("OOICI IOSP Connection Parameters:: host={} : exchange={} : topic={} : sysname={}", new Object[]{ooiciHost, ooiciExchange, ooiciTopic, ooiciSysname});
+        initialized = true;
+    }
+
+    public static boolean init() throws IOException {
+        if (!initialized) {
+            IonUtils.parseProperties();
+            _init();
+        }
+        return initialized;
+    }
+
+    public static boolean init(final File ooiciConnFile) throws IOException {
+        if(!initialized) {
+            IonUtils.parseProperties(ooiciConnFile);
+            _init();
+        }
+        return initialized;
+    }
+    
+    @Deprecated
     public static boolean init(final java.util.HashMap<String, String> connInfo) {
         if (!initialized) {
             ooiciHost = connInfo.get("host");
@@ -115,7 +135,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 
     public void open(RandomAccessFile raf, NetcdfFile ncfile, CancelTask cancelTask) throws IOException {
         if (ooiciHost == null || ooiciHost.isEmpty()) {
-            StringBuilder sb = new StringBuilder("Error: Missing OOICI connection information.  An \"").append(ooiciConnPropsName).append("\" file is required to use this functionality.  The file should be located in the current users home directory: \"").append(userHome).append("\"");
+            StringBuilder sb = new StringBuilder("Error: Missing OOICI connection information.  An \"").append(IonConstants.OOICI_CONN_FILENAME).append("\" file is required to use this functionality.  The file should be located in the current users home directory: \"").append(System.getProperty("user.home")).append("\"");
             throw new IOException(sb.toString());
         }
         /**
@@ -195,28 +215,28 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
     private void buildNetcdfDataset() throws IOException {
         /* Get Head IonMsg */
         GPBWrapper<IonMsg> ionMsgWrap = datasetManager.getObjectWrapper(datasetManager.getHeadId());
-        if(log.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             log.debug("IonMsg:\n{}", ionMsgWrap.toString());
         }
         IonMsg ionMsg = ionMsgWrap.getObjectValue();
-        if(ionMsg.getResponseCode() != ResponseCodes.OK) {
+        if (ionMsg.getResponseCode() != ResponseCodes.OK) {
             throw new IOException("Error retrieving the requested resource: " + ionMsg.getResponseCode() + " ==> " + ionMsg.getResponseBody());
         }
 
         GPBWrapper<DataAccess.GetObjectReplyMessage> objRepWrap = datasetManager.getObjectWrapper(ionMsg.getMessageObject());
-        if(log.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             log.debug("DataAccess.GetObjectReplyMessage:\n{}", objRepWrap.toString());
         }
         DataAccess.GetObjectReplyMessage objReply = objRepWrap.getObjectValue();
 
         GPBWrapper<ResourceFramework.OOIResource> resWrap = datasetManager.getObjectWrapper(objReply.getRetrievedObject());
-        if(log.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             log.debug("ResourceFramework.OOIResource:\n{}", resWrap.toString());
         }
         ResourceFramework.OOIResource resource = resWrap.getObjectValue();
 
         GPBWrapper<Cdmdataset.Dataset> dsWrap = datasetManager.getObjectWrapper(resource.getResourceObject());
-        if(log.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             log.debug("Cdmdataset.Dataset:\n{}", dsWrap.toString());
         }
         Cdmdataset.Dataset dataset = dsWrap.getObjectValue();
@@ -226,7 +246,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         Dimension dim;
         for (Link.CASRef cref : rootGroup.getDimensionsList()) {
             dim = getNcDimension(cref);
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("Add Dim = {}", dim.getName());
             }
             ncfile.addDimension(null, dim);
@@ -234,7 +254,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         Attribute att;
         for (Link.CASRef cref : rootGroup.getAttributesList()) {
             att = getNcAttribute(cref);
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("Add Att = {}", att.getName());
             }
             ncfile.addAttribute(null, att);
@@ -246,7 +266,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         for (Link.CASRef cref : rootGroup.getVariablesList()) {
             try {
                 v = getNcVariable(cref);
-                if(log.isDebugEnabled()) {
+                if (log.isDebugEnabled()) {
                     log.debug("Add Var = {}", v.getName());
                 }
                 ncfile.addVariable(null, v);
@@ -270,7 +290,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             dataBroker = new MsgBrokerClient(ooiciHost, AMQP.PROTOCOL.PORT, ooiciExchange);
             try {
                 dataBroker.attach();
-                if(log.isDebugEnabled()) {
+                if (log.isDebugEnabled()) {
                     log.debug("Data Broker Attached:: myBindingKey={}", dataName.toString());
                 }
             } catch (IonException ex) {
@@ -279,7 +299,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             String dataQueue = dataBroker.declareQueue(null);
             dataBroker.bindQueue(dataQueue, dataName, null);
             dataBroker.attachConsumer(dataQueue);
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("DataBroker || binding_key={} : \"to\" name={} : queue_name = {}", new Object[]{dataName, ooiDatastoreName, dataQueue});
             }
 
@@ -308,7 +328,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             request.getIonHeaders().put("user-id", "ANONYMOUS");
             request.getIonHeaders().put("expiry", "0");
             request.getIonHeaders().put("performative", "request");
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug(request.toString());
             }
             mainBroker.sendMessage(request);
@@ -341,7 +361,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 
                         /* Get the dataWrapper */
                         GPBWrapper dataWrap = dataManager.getObjectWrapper(dataChunk.getNdarray());
-                        if(log.isDebugEnabled()) {
+                        if (log.isDebugEnabled()) {
                             log.debug(dataWrap.toString());
                         }
                         /* Set the current counter on the index to the startIndex */
@@ -349,7 +369,17 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 
                         switch (varDataType) {
                             case BYTE:
+                                Cdmarray.int32Array i32arrByte = (Cdmarray.int32Array) dataWrap.getObjectValue();
+                                for(int i = 0; i < i32arrByte.getValueCount(); i++) {
+                                    arr.setByte(index.currentElement(), (byte)i32arrByte.getValue(i));
+                                }
+                                break;
                             case SHORT:
+                                Cdmarray.int32Array i32arrShort = (Cdmarray.int32Array) dataWrap.getObjectValue();
+                                for(int i = 0; i < i32arrShort.getValueCount(); i++) {
+                                    arr.setShort(index.currentElement(), (short)i32arrShort.getValue(i));
+                                }
+                                break;
                             case INT:
                                 Cdmarray.int32Array i32arr = (Cdmarray.int32Array) dataWrap.getObjectValue();
                                 for (int i = 0; i < i32arr.getValueCount(); i++) {
@@ -395,7 +425,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             if (dataBroker != null) {
                 dataBroker.detach();
                 dataBroker = null;
-                if(log.isDebugEnabled()) {
+                if (log.isDebugEnabled()) {
                     log.debug("Data Broker Detached");
                 }
             }
@@ -432,7 +462,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         if (mainBroker != null) {
             mainBroker.detach();
             mainBroker = null;
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("Main Broker Detached");
             }
         }
@@ -586,7 +616,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             /* TODO: Complete for other data types*/
         }
 
-        if(ncAtt == null) {
+        if (ncAtt == null) {
             throw new IOException("Error reading OOICI attribute: attWrapper:" + attWrap.toString() + " arrWrapper: " + arrWrap.toString());
         }
         return ncAtt;
@@ -748,28 +778,22 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 //            sec.appendRange(0, 0, 1);
 //            sec.appendRange(5, 10, 2);
 //            sec.appendRange(0, 11, 5);
-            
+
 //            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04808";//CT_Station sample
 //            var = "lat";
 //            sec.appendRange(0, 11, 5);
-            
-            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04802";//NTAS_1 sample
-            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04803";//NTAS_2 sample
-            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04804";//WHOTS_1 sample
-            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E04805";//WHOTS_2 sample
+
+            ds = "ooici:0BB8DFA2-2CA2-426F-BDCD-457DF33F3B05";//CODAR sample
             var = "time";
-            
-//            ds = "ooici:3319A67F-81F3-424F-8E69-4F28C4E047F1";//Canned_station_profile sample
-//            var = "time";
-            
-            
+
+
             ncds = ucar.nc2.dataset.NetcdfDataset.openDataset(ds);
-//            log.debug(ncds.toString());
+            log.debug(ncds.toString());
 
 
 //            Array a = ncds.findVariable(var).read(sec);
             Array a = ncds.findVariable(var).read();
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("{} Array: {}", var, a);
             }
         } catch (IOException ex) {
