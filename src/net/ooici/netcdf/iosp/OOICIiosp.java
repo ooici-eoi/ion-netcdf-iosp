@@ -35,6 +35,7 @@ import net.ooici.core.workbench_messages.DataAccess;
 import net.ooici.data.cdm.Cdmdataset;
 import net.ooici.services.coi.ResourceFramework;
 import ucar.ma2.Array;
+import ucar.ma2.ArrayChar;
 import ucar.ma2.DataType;
 import ucar.ma2.Index;
 import ucar.ma2.InvalidRangeException;
@@ -430,12 +431,14 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
                                 Cdmarray.int32Array i32arrByte = (Cdmarray.int32Array) dataWrap.getObjectValue();
                                 for (int i = 0; i < i32arrByte.getValueCount(); i++) {
                                     arr.setByte(index.currentElement(), (byte) i32arrByte.getValue(i));
+                                    index.incr();
                                 }
                                 break;
                             case SHORT:
                                 Cdmarray.int32Array i32arrShort = (Cdmarray.int32Array) dataWrap.getObjectValue();
                                 for (int i = 0; i < i32arrShort.getValueCount(); i++) {
                                     arr.setShort(index.currentElement(), (short) i32arrShort.getValue(i));
+                                    index.incr();
                                 }
                                 break;
                             case INT:
@@ -463,6 +466,14 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
                                 Cdmarray.f64Array f64arr = (Cdmarray.f64Array) dataWrap.getObjectValue();
                                 for (int i = 0; i < f64arr.getValueCount(); i++) {
                                     arr.setDouble(index.currentElement(), f64arr.getValue(i));
+                                    index.incr();
+                                }
+                                break;
+                            case CHAR:
+                                Cdmarray.stringArray sarr = (Cdmarray.stringArray) dataWrap.getObjectValue();
+                                ArrayChar arrC = (ArrayChar) arr;
+                                for (int i = 0; i < sarr.getValueCount(); i++) {
+                                    arrC.setString(index.currentElement(), sarr.getValue(i));
                                     index.incr();
                                 }
                                 break;
@@ -840,19 +851,21 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 //            var = "lat";
 //            sec.appendRange(0, 11, 5);
 
-            ds = "ooici://E27798BD-601D-44BF-9BE0-F7667BE5C180~4^^^";
-            var = "time";
+            ds = "ooici://7F8E1236-FACD-447B-B4C1-E6AF00C245E9";
+            var = "site_code";
 
 
             NetcdfDataset.disableNetcdfFileCache();
             ncds = ucar.nc2.dataset.NetcdfDataset.openDataset(ds);
-            log.debug(ncds.toString());
+            if(log.isDebugEnabled()) {
+                log.debug(ncds.toString());
+            }
 
 
 //            Array a = ncds.findVariable(var).read(sec);
-            Array a = ncds.findVariable(var).read("0:10");
-            if (log.isDebugEnabled()) {
-                log.debug("{} Array: {}", var, a);
+            Array a = ncds.findVariable(var).read();
+            if (log.isInfoEnabled()) {
+                log.info("{} Array: {}", var, a);
             }
         } catch (IOException ex) {
             log.error("Error: ", ex);
