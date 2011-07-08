@@ -409,18 +409,16 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             StructureManager dataManager;
             boolean done = false;
             while (!done) {
-                rep = dataBroker.consumeMessage(dataQueue, 60000);// 60 second timeout
+                rep = dataBroker.consumeMessage(dataQueue, 120000);// 2 minute timeout
                 if (rep != null) {
+                    dataManager = StructureManager.Factory(rep);
+                    /* Get the IonMsg (head) */
+                    GPBWrapper<IonMsg> ionMsgWrap = dataManager.getObjectWrapper(dataManager.getHeadId());
+                    IonMsg dataMsg = ionMsgWrap.getObjectValue();
                     if (!rep.isErrorMessage()) {
-                        dataManager = StructureManager.Factory(rep);
-                        /* Get the IonMsg (head) */
-                        GPBWrapper<IonMsg> ionMsgWrap = dataManager.getObjectWrapper(dataManager.getHeadId());
-                        IonMsg datamsg = ionMsgWrap.getObjectValue();
-
                         /* Get the DataChunk message */
-                        GPBWrapper<DataAccess.DataChunkMessage> dataChunkWrap = dataManager.getObjectWrapper(datamsg.getMessageObject());
+                        GPBWrapper<DataAccess.DataChunkMessage> dataChunkWrap = dataManager.getObjectWrapper(dataMsg.getMessageObject());
                         DataAccess.DataChunkMessage dataChunk = dataChunkWrap.getObjectValue();
-//                        log.debug(dataChunk.toString());
 
                         /* Set the "doneness" */
                         done = dataChunk.getDone();
@@ -490,7 +488,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
                                 throw new IonException("Unsupported datatype = " + varDataType.name());
                         }
                     } else {
-                        throw new IonException("The reply was an error:" + rep.toString());
+                        throw new IonException("The reply was an error:\n************************************\n" + dataMsg + "************************************\n");
                     }
                 } else {
                     throw new IonException("The reply was null or timed out");
