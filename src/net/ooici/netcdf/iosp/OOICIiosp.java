@@ -78,6 +78,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
     private String mainQueue;
     private StructureManager datasetManager;
     private HashMap<Variable, Cdmvariable.Variable> _varMap;
+    private HashMap<String, Cdmdimension.Dimension> _dimMap;
     private static boolean initialized = false;
 
     public OOICIiosp() throws InstantiationException {
@@ -156,7 +157,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         try {
             mainBroker.attach();
             if (log.isInfoEnabled()) {
-                log.info("Main Broker Attached:: myBindingKey={}", ooiMyName.toString());
+                log.info("Main Broker Attached:: binding_key={}", ooiMyName);
             }
         } catch (IonException ex) {
             throw new IOException("Error opening file: Could not connect to broker", ex);
@@ -181,9 +182,6 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         }
         retrieveDatasetFromDatastore();
         buildNetcdfDataset();
-
-//        this.ncfile.setTitle(datasetResourceId);
-//        this.ncfile.setId(datasetResourceId);
 
         this.ncfile.finish();
     }
@@ -293,6 +291,8 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         GPBWrapper<Cdmgroup.Group> rootWrap = datasetManager.getObjectWrapper(dataset.getRootGroup());
         Cdmgroup.Group rootGroup = rootWrap.getObjectValue();
         Dimension dim;
+        /* Initialize the dimMap */
+        _dimMap = new HashMap<String, Cdmdimension.Dimension>();
         for (Link.CASRef cref : rootGroup.getDimensionsList()) {
             dim = getNcDimension(cref);
             if (log.isDebugEnabled()) {
@@ -338,14 +338,14 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         /* Get reference to the variable */
         Cdmvariable.Variable ooiVar = _varMap.get(v2);
 
+        MessagingName dataName = MessagingName.generateUniqueName();
         try {
             /* Generate a new broker for dealing with the data messages */
-            MessagingName dataName = MessagingName.generateUniqueName();
             dataBroker = new MsgBrokerClient(ooiciHost, AMQP.PROTOCOL.PORT, ooiciExchange);
             try {
                 dataBroker.attach();
-                if (log.isDebugEnabled()) {
-                    log.debug("Data Broker Attached:: myBindingKey={}", dataName.toString());
+                if (log.isInfoEnabled()) {
+                    log.info("Data Broker Attached:: binding_key={}", dataName);
                 }
             } catch (IonException ex) {
                 throw new IOException("Error connecting to broker for data transfer", ex);
@@ -361,8 +361,17 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             net.ooici.core.workbench_messages.DataAccess.DataRequestMessage.Builder drmBldr = net.ooici.core.workbench_messages.DataAccess.DataRequestMessage.newBuilder();
             drmBldr.setDataRoutingKey(dataName.getName());
             drmBldr.setStructureArrayRef(ooiVar.getContent().getKey());
-            for (Range r : section.getRanges()) {
-                drmBldr.addRequestBounds(Cdmvariable.Bounds.newBuilder().setOrigin(r.first()).setSize(r.last() - r.first() + 1).setStride(r.stride()).build());
+            long dimOffset;
+            Range r;
+            String dimName;
+            for (int i = 0; i < section.getRank(); i++) {
+                r = section.getRange(i);
+                dimName = r.getName();
+                if (dimName == null) {
+                    dimName = v2.getDimension(i).getName();
+                }
+                dimOffset = _dimMap.get(dimName).getMinOffset();
+                drmBldr.addRequestBounds(Cdmvariable.Bounds.newBuilder().setOrigin(r.first() + dimOffset).setSize(r.last() - r.first() + 1).setStride(r.stride()).build());
             }
             GPBWrapper drmWrap = GPBWrapper.Factory(drmBldr.build());
             if (log.isDebugEnabled()) {
@@ -494,8 +503,8 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
             if (dataBroker != null) {
                 dataBroker.detach();
                 dataBroker = null;
-                if (log.isDebugEnabled()) {
-                    log.debug("Data Broker Detached");
+                if (log.isInfoEnabled()) {
+                    log.info("Data Broker Detached:: binding_key={}", dataName);
                 }
             }
             IonMessage repMessage = mainBroker.consumeMessage(mainQueue, 10000);//10 second timeout
@@ -530,8 +539,8 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         if (mainBroker != null) {
             mainBroker.detach();
             mainBroker = null;
-            if (log.isDebugEnabled()) {
-                log.debug("Main Broker Detached");
+            if (log.isInfoEnabled()) {
+                log.info("Main Broker Detached:: binding_key={}", ooiMyName);
             }
         }
     }
@@ -585,6 +594,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
     private Dimension getNcDimension(Link.CASRef ref) {
         GPBWrapper<Cdmdimension.Dimension> dimWrap = datasetManager.getObjectWrapper(ref);
         Cdmdimension.Dimension ooiDim = dimWrap.getObjectValue();
+        _dimMap.put(ooiDim.getName(), ooiDim);
         return new Dimension(ooiDim.getName(), (int) ooiDim.getLength());
     }
 
@@ -851,13 +861,18 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 //            var = "lat";
 //            sec.appendRange(0, 11, 5);
 
-            ds = "ooici://7F8E1236-FACD-447B-B4C1-E6AF00C245E9";
-            var = "site_code";
+            ds = "ooici://4490D06D-B9E0-42FB-8514-E377F190868C";
+            var = "time";
+//            var = "u";
+//            sec.appendRange(0, 0, 1);
+//            sec.appendRange(0, 459, 1);
+//            sec.appendRange(0, 700, 1);
+
 
 
             NetcdfDataset.disableNetcdfFileCache();
             ncds = ucar.nc2.dataset.NetcdfDataset.openDataset(ds);
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug(ncds.toString());
             }
 

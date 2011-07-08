@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ivy-module version="2.0">
-    <info module="ooici-netcdf-iosp" organisation="net.ooici" revision="0.1.0"/>
+    <info module="ooici-netcdf-iosp" organisation="net.ooici" revision="0.3.0"/>
     <configurations>
         <conf name="compile"/>
     </configurations>
     <dependencies>
         <!-- ION project dependencies -->
-        <dependency name="ioncore-java" rev="0.2.6" conf="*->*,!sources,!javadoc" />
+        <dependency name="ioncore-java" rev="0.2.12" conf="*->*,!sources,!javadoc" />
         <!-- JUnit -->
         <dependency org="junit" name="junit" rev="4.8.2" conf="*->*,!sources,!javadoc"/>
         <dependency name="netcdf" rev="4.2" conf="*->*,!sources,!javadoc" />
