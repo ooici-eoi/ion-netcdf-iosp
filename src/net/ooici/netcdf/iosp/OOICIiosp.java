@@ -137,7 +137,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         /**
          * Claim the file as "OOI-CI"
          */
-        return raf.getLocation().toLowerCase().startsWith("ooici://");
+        return raf.getLocation().toLowerCase().startsWith("ion://");
     }
 
     private void initBroker() {
@@ -168,7 +168,7 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 
         /* Set local variables and prepare ncfile object with all metadata: dimensions, variables, attributes, etc */
         this.ncfile = ncfile;
-        this.datasetResourceId = raf.getLocation().replaceFirst("ooici://", "");//trim the "ooici://" from the front to obtain the UUID
+        this.datasetResourceId = raf.getLocation().replaceFirst("ion://", "");//trim the "ion://" from the front to obtain the UUID
         /* Use regex to capture any 'treeish' characters that might be at the end of the id */
         Pattern p = Pattern.compile("([@~^].*)$");
         Matcher m = p.matcher(this.datasetResourceId);
@@ -846,8 +846,8 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
         ucar.nc2.dataset.NetcdfDataset ncds = null;
         try {
             Section sec = new Section();
-            String ds = "ooici://3319A67F-81F3-424F-8E69-4F28C4E04801";//HYCOM sample
-//            ds = "ooici://3319A67F-81F3-424F-8E69-4F28C4E04800";//HYCOM_split sample
+            String ds = "ion://3319A67F-81F3-424F-8E69-4F28C4E04801";//HYCOM sample
+//            ds = "ion://3319A67F-81F3-424F-8E69-4F28C4E04800";//HYCOM_split sample
             String var = "MT";
 //            var = "u_velocity";
 //            sec.appendRange(0, 0, 1);
@@ -855,11 +855,11 @@ public class OOICIiosp implements ucar.nc2.iosp.IOServiceProvider {
 //            sec.appendRange(5, 10, 2);
 //            sec.appendRange(0, 11, 5);
 
-//            ds = "ooici://3319A67F-81F3-424F-8E69-4F28C4E04808";//CT_Station sample
+//            ds = "ion://3319A67F-81F3-424F-8E69-4F28C4E04808";//CT_Station sample
 //            var = "lat";
 //            sec.appendRange(0, 11, 5);
 
-            ds = "ooici://4490D06D-B9E0-42FB-8514-E377F190868C";
+            ds = "ion://ED19F7F6-A0BB-46F0-949A-68C9334FD882";
             var = "time";
 //            var = "u";
 //            sec.appendRange(0, 0, 1);
