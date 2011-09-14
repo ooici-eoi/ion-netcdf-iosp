@@ -1,7 +1,7 @@
 ---
-Ocean Observatories Initiative Cyberinfrastructure  
-Integrated Observatory Network (ION)  
-ion-netcdf-iosp  
+**Ocean Observatories Initiative Cyberinfrastructure**  
+**Integrated Observatory Network (ION)**  
+**ion-netcdf-iosp**  
 
 ---
 
